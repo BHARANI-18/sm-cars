@@ -8,6 +8,6 @@ router.post('/logout', logoutUser);
 router.get('/me', protect, getMe);
 
 // Temporarily useful mapping to seed an initial admin account
-router.post('/seed', seedAdmin);
+router.get('/seed', seedAdmin);
 
 module.exports = router;
