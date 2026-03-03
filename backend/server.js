@@ -14,7 +14,16 @@ app.use(cors({
     origin: function (origin, callback) {
         // allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
+        // Allow local development
         if (origin.startsWith('http://localhost:')) {
+            return callback(null, true);
+        }
+        // Allow Vercel deployments
+        if (origin.endsWith('.vercel.app')) {
+            return callback(null, true);
+        }
+        // Allow Render deployments
+        if (origin.endsWith('.onrender.com')) {
             return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'), false);
