@@ -82,23 +82,27 @@ const getMe = async (req, res) => {
 // Seed initial admin user if it doesn't exist (useful for testing initialization)
 const seedAdmin = async (req, res) => {
     try {
-        const adminExists = await User.findOne({ username: 'admin' });
+        const username = process.env.ADMIN_USERNAME || 'admin';
+        const password = process.env.ADMIN_PASSWORD;
 
-        if (adminExists) {
-            return res.status(400).json({ message: 'Admin already exists' });
+        if (!password) {
+            return res.status(500).json({ message: 'ADMIN_PASSWORD environment variable is not set.' });
         }
 
-        const admin = await User.create({
-            username: 'admin',
-            password: 'password123'
-        });
+        const adminExists = await User.findOne({ username });
+
+        if (adminExists) {
+            return res.status(400).json({ message: `Admin '${username}' already exists` });
+        }
+
+        const admin = await User.create({ username, password });
 
         res.status(201).json({
             message: 'Admin created successfully',
             username: admin.username
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
