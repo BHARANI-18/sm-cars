@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getCars, deleteCar, createCar, updateCar } from "@/lib/api";
+import { compressImages } from "@/lib/imageUtils";
 import Image from "next/image";
 
 export default function AdminDashboard() {
@@ -15,8 +16,9 @@ export default function AdminDashboard() {
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingCar, setEditingCar] = useState<any>(null); // null if adding new
+    const [editingCar, setEditingCar] = useState<any>(null);
     const [formLoading, setFormLoading] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState(""); // progress message
 
     // Modal State
     const [formData, setFormData] = useState({
@@ -82,7 +84,22 @@ export default function AdminDashboard() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            setImageFiles(Array.from(e.target.files));
+            const selected = Array.from(e.target.files);
+            if (selected.length > 10) {
+                alert(`You can upload up to 10 images. Only the first 10 will be used.`);
+            }
+            setImageFiles(selected.slice(0, 10));
+            setPrimaryImageIndex(0);
+        }
+    };
+
+    const removeImage = (idx: number) => {
+        const updated = imageFiles.filter((_, i) => i !== idx);
+        setImageFiles(updated);
+        // Adjust primary index
+        if (primaryImageIndex >= updated.length) {
+            setPrimaryImageIndex(Math.max(0, updated.length - 1));
+        } else if (primaryImageIndex === idx) {
             setPrimaryImageIndex(0);
         }
     };
@@ -90,31 +107,36 @@ export default function AdminDashboard() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setFormLoading(true);
-
-        const sendData = new FormData();
-        Object.entries(formData).forEach(([key, value]) => sendData.append(key, value));
-
-        if (imageFiles && imageFiles.length > 0) {
-            // Re-order so the selected primary image is uploaded first (index 0)
-            const orderedFiles = [...imageFiles];
-            if (primaryImageIndex > 0 && primaryImageIndex < orderedFiles.length) {
-                const primary = orderedFiles.splice(primaryImageIndex, 1)[0];
-                orderedFiles.unshift(primary);
-            }
-
-            orderedFiles.forEach(file => {
-                if (file instanceof File) {
-                    sendData.append('images', file);
-                }
-            });
-        }
+        setUploadStatus("");
 
         try {
+            const sendData = new FormData();
+            Object.entries(formData).forEach(([key, value]) => sendData.append(key, value));
+
+            if (imageFiles && imageFiles.length > 0) {
+                // Step 1: Compress images client-side
+                setUploadStatus(`Compressing ${imageFiles.length} image(s)...`);
+                const orderedFiles = [...imageFiles];
+                if (primaryImageIndex > 0 && primaryImageIndex < orderedFiles.length) {
+                    const primary = orderedFiles.splice(primaryImageIndex, 1)[0];
+                    orderedFiles.unshift(primary);
+                }
+                const compressed = await compressImages(orderedFiles);
+
+                // Step 2: Append compressed files
+                setUploadStatus(`Uploading ${compressed.length} image(s) to cloud...`);
+                compressed.forEach(file => sendData.append('images', file));
+            }
+
+            // Step 3: Save to database
+            setUploadStatus('Saving car details...');
             if (editingCar) {
                 await updateCar(editingCar._id, sendData);
             } else {
                 await createCar(sendData);
             }
+
+            setUploadStatus('');
             setIsModalOpen(false);
             fetchCars();
         } catch (error: any) {
@@ -259,29 +281,53 @@ export default function AdminDashboard() {
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Upload Images {editingCar && "(Leave empty to keep current images)"}
+                                        <span className="ml-2 text-xs text-gray-400 font-normal">(Max 10)</span>
                                     </label>
-                                    <input type="file" multiple accept="image/*" onChange={handleFileChange} className="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                                    <input
+                                        type="file" multiple accept="image/*"
+                                        onChange={handleFileChange}
+                                        className="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                    />
 
                                     {imageFiles.length > 0 && (
                                         <div className="mt-4">
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select the primary image to display on the front page:</p>
-                                            <div className="flex gap-3 overflow-x-auto pb-2">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">Click image to set as cover · Click × to remove</p>
+                                                <span className={`text-xs font-semibold ${imageFiles.length >= 10 ? 'text-red-500' : 'text-gray-400'}`}>
+                                                    {imageFiles.length}/10
+                                                </span>
+                                            </div>
+                                            <div className="flex gap-3 flex-wrap">
                                                 {imageFiles.map((file, idx) => (
                                                     <div
                                                         key={idx}
-                                                        onClick={() => setPrimaryImageIndex(idx)}
-                                                        className={`relative w-24 h-24 flex-shrink-0 cursor-pointer rounded-lg overflow-hidden border-4 transition-all ${primaryImageIndex === idx ? 'border-blue-500 shadow-md scale-105' : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'}`}
+                                                        className={`relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden border-4 transition-all group ${primaryImageIndex === idx
+                                                                ? 'border-blue-500 shadow-md scale-105'
+                                                                : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
+                                                            }`}
                                                     >
+                                                        {/* Clickable image to set cover */}
                                                         <img
                                                             src={URL.createObjectURL(file)}
                                                             alt={`preview-${idx}`}
-                                                            className="object-cover w-full h-full"
+                                                            onClick={() => setPrimaryImageIndex(idx)}
+                                                            className="object-cover w-full h-full cursor-pointer"
                                                         />
+                                                        {/* COVER badge */}
                                                         {primaryImageIndex === idx && (
                                                             <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
                                                                 COVER
                                                             </div>
                                                         )}
+                                                        {/* Remove button */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
+                                                            className="absolute top-1 left-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                                                            title="Remove image"
+                                                        >
+                                                            ×
+                                                        </button>
                                                     </div>
                                                 ))}
                                             </div>
@@ -290,12 +336,21 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-zinc-800 gap-4">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 rounded-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">
+                            <div className="flex justify-end items-center pt-4 border-t border-gray-200 dark:border-zinc-800 gap-4">
+                                {uploadStatus && (
+                                    <div className="flex items-center gap-2 text-sm text-blue-500 font-medium mr-auto">
+                                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                        </svg>
+                                        {uploadStatus}
+                                    </div>
+                                )}
+                                <button type="button" onClick={() => setIsModalOpen(false)} disabled={formLoading} className="px-6 py-2 rounded-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition disabled:opacity-50">
                                     Cancel
                                 </button>
                                 <button type="submit" disabled={formLoading} className={`px-6 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition ${formLoading ? "opacity-70 cursor-not-allowed" : ""}`}>
-                                    {formLoading ? "Saving..." : "Save Car"}
+                                    {formLoading ? "Please wait..." : "Save Car"}
                                 </button>
                             </div>
                         </form>
