@@ -28,12 +28,12 @@ const loginUser = async (req, res) => {
         if (isMatch) {
             const token = generateToken(user._id);
 
-            // Set cookie
+            // Set session cookie (expires when browser closes — no auto-login on fresh visits)
             res.cookie('token', token, {
                 httpOnly: true,
-                secure: true, // must be true when sameSite is 'none'
-                sameSite: 'none', // required for cross-origin cookies (Vercel → Render)
-                maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+                secure: true,
+                sameSite: 'none',
+                // No maxAge = session cookie; cleared when browser is closed
             });
 
             res.status(200).json({
@@ -52,8 +52,11 @@ const loginUser = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Public
 const logoutUser = (req, res) => {
+    // Must match the same sameSite/secure settings as the login cookie to clear it
     res.cookie('token', '', {
         httpOnly: true,
+        secure: true,
+        sameSite: 'none',
         expires: new Date(0),
     });
 

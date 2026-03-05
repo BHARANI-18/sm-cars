@@ -21,7 +21,7 @@ export default function CarCard({ car }: { car: Car }) {
                 {car.imageUrls && car.imageUrls.length > 0 ? (
                     <Image
                         src={car.imageUrls[0]}
-                        alt={car.title}
+                        alt={`${car.brand} ${car.model}`}
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -37,7 +37,7 @@ export default function CarCard({ car }: { car: Car }) {
             <div className="p-5">
                 <div className="flex justify-between items-start mb-2">
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate">
-                        {car.title || "Untitled"}
+                        {car.brand} {car.model}
                     </h3>
                 </div>
 

@@ -22,7 +22,7 @@ export default function AdminDashboard() {
 
     // Modal State
     const [formData, setFormData] = useState({
-        title: "", brand: "", model: "", year: "", price: "", fuelType: "", transmission: "", mileage: "", description: ""
+        brand: "", model: "", year: "", price: "", fuelType: "", transmission: "", mileage: "", description: ""
     });
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
@@ -61,7 +61,7 @@ export default function AdminDashboard() {
 
     const openAddModal = () => {
         setEditingCar(null);
-        setFormData({ title: "", brand: "", model: "", year: "", price: "", fuelType: "", transmission: "", mileage: "", description: "" });
+        setFormData({ brand: "", model: "", year: "", price: "", fuelType: "", transmission: "", mileage: "", description: "" });
         setImageFiles([]);
         setPrimaryImageIndex(0);
         setIsModalOpen(true);
@@ -70,7 +70,7 @@ export default function AdminDashboard() {
     const openEditModal = (car: any) => {
         setEditingCar(car);
         setFormData({
-            title: car.title || "", brand: car.brand || "", model: car.model || "", year: car.year ? car.year.toString() : "", price: car.price ? car.price.toString() : "",
+            brand: car.brand || "", model: car.model || "", year: car.year ? car.year.toString() : "", price: car.price ? car.price.toString() : "",
             fuelType: car.fuelType || "", transmission: car.transmission || "", mileage: car.mileage ? car.mileage.toString() : "", description: car.description || ""
         });
         setImageFiles([]);
@@ -190,10 +190,10 @@ export default function AdminDashboard() {
                                     <tr key={car._id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition">
                                         <td className="p-4">
                                             <div className="relative w-20 h-14 rounded-md overflow-hidden bg-gray-200">
-                                                <Image src={car.imageUrls?.[0] || "https://via.placeholder.com/80"} alt={car.title} fill className="object-cover" sizes="80px" />
+                                                <Image src={car.imageUrls?.[0] || "https://via.placeholder.com/80"} alt={`${car.brand} ${car.model}`} fill className="object-cover" sizes="80px" />
                                             </div>
                                         </td>
-                                        <td className="p-4 font-medium text-gray-900 dark:text-white">{car.title || "Untitled Car"}</td>
+                                        <td className="p-4 font-medium text-gray-900 dark:text-white">{car.brand} {car.model}</td>
                                         <td className="p-4 text-blue-600 dark:text-blue-400 font-semibold">
                                             {car.price ? `$${car.price.toLocaleString()}` : 'N/A'}
                                         </td>
@@ -232,10 +232,6 @@ export default function AdminDashboard() {
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Title</label>
-                                    <input name="title" value={formData.title} onChange={handleInputChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white" />
-                                </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brand</label>
                                     <input name="brand" value={formData.brand} onChange={handleInputChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white" />
@@ -302,8 +298,8 @@ export default function AdminDashboard() {
                                                     <div
                                                         key={idx}
                                                         className={`relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden border-4 transition-all group ${primaryImageIndex === idx
-                                                                ? 'border-blue-500 shadow-md scale-105'
-                                                                : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
+                                                            ? 'border-blue-500 shadow-md scale-105'
+                                                            : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
                                                             }`}
                                                     >
                                                         {/* Clickable image to set cover */}
