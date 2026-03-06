@@ -17,7 +17,7 @@ const carSchema = new mongoose.Schema({
         type: Number
     },
     fuelType: {
-        type: String
+        type: [String]
     },
     transmission: {
         type: String
@@ -27,6 +27,18 @@ const carSchema = new mongoose.Schema({
     },
     description: {
         type: String
+    },
+    owner: {
+        type: String       // e.g. '1st', '2nd', 'Company'
+    },
+    fcUntil: {
+        type: Number       // Fitness Certificate valid until year
+    },
+    insurance: {
+        type: String       // e.g. 'Comprehensive', 'Third Party'
+    },
+    kilometer: {
+        type: Number       // Odometer reading in km
     },
     imageUrls: {
         type: [String],

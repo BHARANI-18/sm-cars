@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SM Motors | Premium Car Dealership",
+  title: "SM Cars | Premium Car Dealership",
   description: "Browse our premium selection of vehicles. Quality, performance, and affordable prices guaranteed.",
 };
 

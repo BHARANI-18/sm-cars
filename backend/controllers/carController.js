@@ -55,7 +55,7 @@ const createCar = async (req, res) => {
             imageUrls = results.filter(result => result !== null).map(result => result.secure_url);
         }
 
-        const { title, brand, model, year, price, fuelType, transmission, mileage, description } = req.body;
+        const { title, brand, model, year, price, fuelType, transmission, mileage, description, owner, fcUntil, insurance, kilometer } = req.body;
 
         const car = await Car.create({
             title,
@@ -63,10 +63,14 @@ const createCar = async (req, res) => {
             model,
             year: year ? Number(year) : undefined,
             price: price ? Number(price) : undefined,
-            fuelType,
+            fuelType: Array.isArray(fuelType) ? fuelType : fuelType ? [fuelType] : [],
             transmission,
             mileage: mileage ? Number(mileage) : undefined,
             description,
+            owner,
+            fcUntil: fcUntil ? Number(fcUntil) : undefined,
+            insurance,
+            kilometer: kilometer ? Number(kilometer) : undefined,
             imageUrls
         });
 
@@ -117,10 +121,16 @@ const updateCar = async (req, res) => {
             model: req.body.model !== undefined ? req.body.model : car.model,
             year: req.body.year ? Number(req.body.year) : car.year,
             price: req.body.price ? Number(req.body.price) : car.price,
-            fuelType: req.body.fuelType !== undefined ? req.body.fuelType : car.fuelType,
+            fuelType: req.body.fuelType !== undefined
+                ? (Array.isArray(req.body.fuelType) ? req.body.fuelType : [req.body.fuelType])
+                : car.fuelType,
             transmission: req.body.transmission !== undefined ? req.body.transmission : car.transmission,
             mileage: req.body.mileage ? Number(req.body.mileage) : car.mileage,
             description: req.body.description !== undefined ? req.body.description : car.description,
+            owner: req.body.owner !== undefined ? req.body.owner : car.owner,
+            fcUntil: req.body.fcUntil ? Number(req.body.fcUntil) : car.fcUntil,
+            insurance: req.body.insurance !== undefined ? req.body.insurance : car.insurance,
+            kilometer: req.body.kilometer ? Number(req.body.kilometer) : car.kilometer,
             imageUrls: imageUrls
         };
 
