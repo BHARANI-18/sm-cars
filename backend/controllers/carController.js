@@ -51,8 +51,15 @@ const createCar = async (req, res) => {
                 }
                 return Promise.resolve(null);
             });
-            const results = await Promise.all(uploadPromises);
-            imageUrls = results.filter(result => result !== null).map(result => result.secure_url);
+            // allSettled: individual failures won't abort the entire save
+            const results = await Promise.allSettled(uploadPromises);
+            imageUrls = results
+                .filter(r => r.status === 'fulfilled' && r.value !== null)
+                .map(r => r.value.secure_url);
+            const failedCount = results.filter(r => r.status === 'rejected').length;
+            if (failedCount > 0) {
+                console.warn(`${failedCount} image(s) failed to upload to Cloudinary.`);
+            }
         }
 
         const { title, brand, model, year, price, fuelType, transmission, mileage, description, owner, fcUntil, insurance, kilometer } = req.body;
@@ -105,12 +112,12 @@ const updateCar = async (req, res) => {
                 }
                 return Promise.resolve(null);
             });
-            const results = await Promise.all(uploadPromises);
-
-            // Only update imageUrls if we actively uploaded valid files
-            const validResults = results.filter(result => result !== null);
+            const results = await Promise.allSettled(uploadPromises);
+            const validResults = results
+                .filter(r => r.status === 'fulfilled' && r.value !== null)
+                .map(r => r.value.secure_url);
             if (validResults.length > 0) {
-                imageUrls = validResults.map(result => result.secure_url);
+                imageUrls = validResults;
             }
         }
 

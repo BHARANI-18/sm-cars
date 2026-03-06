@@ -41,8 +41,7 @@ const carSchema = new mongoose.Schema({
         type: Number       // Odometer reading in km
     },
     imageUrls: {
-        type: [String],
-        validate: [v => Array.isArray(v) && v.length > 0, 'Please add at least one image']
+        type: [String]
     }
 }, {
     timestamps: true // This will automatically add createdAt and updatedAt fields
