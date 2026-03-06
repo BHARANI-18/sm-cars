@@ -162,7 +162,9 @@ export default function AdminDashboard() {
         try {
             const sendData = new FormData();
             Object.entries(formData).forEach(([key, value]) => sendData.append(key, value));
-            selectedFuelTypes.forEach(ft => sendData.append('fuelType', ft));
+            // Send as ONE comma-separated string — avoids multer parsing as array
+            // which causes Mongoose "Cast to string failed" error on the backend
+            sendData.append('fuelType', selectedFuelTypes.join(', '));
 
             if (imageFiles && imageFiles.length > 0) {
                 setUploadStatus(`Compressing ${imageFiles.length} image(s)...`);
