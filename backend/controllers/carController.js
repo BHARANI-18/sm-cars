@@ -70,7 +70,10 @@ const createCar = async (req, res) => {
             model,
             year: year ? Number(year) : undefined,
             price: price ? Number(price) : undefined,
-            fuelType: Array.isArray(fuelType) ? fuelType : fuelType ? [fuelType] : [],
+            fuelType: (() => {
+                if (Array.isArray(fuelType)) return fuelType.join(', ');
+                return fuelType || '';
+            })(),
             transmission,
             mileage: mileage ? Number(mileage) : undefined,
             description,
@@ -128,9 +131,13 @@ const updateCar = async (req, res) => {
             model: req.body.model !== undefined ? req.body.model : car.model,
             year: req.body.year ? Number(req.body.year) : car.year,
             price: req.body.price ? Number(req.body.price) : car.price,
-            fuelType: req.body.fuelType !== undefined
-                ? (Array.isArray(req.body.fuelType) ? req.body.fuelType : [req.body.fuelType])
-                : car.fuelType,
+            fuelType: (() => {
+                const ft = req.body.fuelType;
+                if (Array.isArray(ft)) return ft.join(', ');
+                if (ft !== undefined) return ft || '';
+                // Preserve existing — convert old array format if needed
+                return Array.isArray(car.fuelType) ? car.fuelType.join(', ') : (car.fuelType || '');
+            })(),
             transmission: req.body.transmission !== undefined ? req.body.transmission : car.transmission,
             mileage: req.body.mileage ? Number(req.body.mileage) : car.mileage,
             description: req.body.description !== undefined ? req.body.description : car.description,

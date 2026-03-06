@@ -98,7 +98,14 @@ export default function AdminDashboard() {
             insurance: car.insurance || "", kilometer: car.kilometer ? car.kilometer.toString() : ""
         });
         const ft = car.fuelType;
-        setSelectedFuelTypes(Array.isArray(ft) ? ft : ft ? [ft] : []);
+        if (Array.isArray(ft)) {
+            setSelectedFuelTypes(ft);
+        } else if (ft) {
+            // Handle comma-separated string e.g. "Petrol, Diesel"
+            setSelectedFuelTypes(ft.split(',').map((s: string) => s.trim()).filter(Boolean));
+        } else {
+            setSelectedFuelTypes([]);
+        }
         setImageFiles([]);
         setPrimaryImageIndex(0);
         setIsModalOpen(true);

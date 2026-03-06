@@ -17,7 +17,9 @@ export default async function CarDetailsPage({ params }: { params: Promise<{ id:
 
     const fuelDisplay = Array.isArray(car.fuelType)
         ? car.fuelType.join(' / ')
-        : car.fuelType || 'N/A';
+        : car.fuelType
+            ? car.fuelType.split(',').map((s: string) => s.trim()).join(' / ')
+            : 'N/A';
 
     return (
         <div className="container mx-auto px-4 py-6">

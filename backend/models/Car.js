@@ -17,7 +17,7 @@ const carSchema = new mongoose.Schema({
         type: Number
     },
     fuelType: {
-        type: [String]
+        type: String       // stored as comma-separated e.g. 'Petrol, Diesel'
     },
     transmission: {
         type: String
