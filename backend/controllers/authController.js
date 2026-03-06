@@ -28,13 +28,12 @@ const loginUser = async (req, res) => {
         if (isMatch) {
             const token = generateToken(user._id);
 
-            // Set session cookie (expires when browser closes — no auto-login on fresh visits)
             res.cookie('token', token, {
                 httpOnly: true,
                 secure: true,
                 sameSite: 'none',
-                path: '/', // Explicit path ensures it's fully matched when clearing
-                // No maxAge = session cookie; cleared when browser is closed
+                path: '/',
+                maxAge: 30 * 60 * 1000, // Explicitly expires in exactly 30 minutes
             });
 
             res.status(200).json({
@@ -53,13 +52,12 @@ const loginUser = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Public
 const logoutUser = (req, res) => {
-    // Must match the same sameSite/secure settings as the login cookie to clear it
     res.cookie('token', '', {
         httpOnly: true,
         secure: true,
         sameSite: 'none',
-        path: '/', // Path must match exactly to overwrite and clear the cookie
-        expires: new Date(0),
+        path: '/',
+        maxAge: 0, // maxAge 0 reliably forces the browser to delete the cookie immediately
     });
 
     res.status(200).json({ message: 'Logged out successfully' });
