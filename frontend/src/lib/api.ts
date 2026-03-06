@@ -1,5 +1,17 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+// Helper: read error detail from a failed fetch response
+async function readError(res: Response, fallback: string): Promise<string> {
+    try {
+        const data = await res.json();
+        // Include both message and the detailed error field if present
+        if (data.error) return `${data.message || fallback}: ${data.error}`;
+        return data.message || fallback;
+    } catch {
+        return fallback;
+    }
+}
+
 // --- AUTH APIs ---
 export const loginApi = async (credentials: any) => {
     const res = await fetch(`${API_URL}/auth/login`, {
@@ -45,18 +57,11 @@ export const createCar = async (formData: FormData) => {
     const res = await fetch(`${API_URL}/cars`, {
         method: 'POST',
         body: formData,
-        credentials: 'include' // needed to pass auth cookie for protected routes
+        credentials: 'include'
     });
-
     if (!res.ok) {
-        let errStr = "Failed to create car";
-        try {
-            const data = await res.json();
-            errStr = data.message || errStr;
-        } catch (e) { }
-        throw new Error(errStr);
+        throw new Error(await readError(res, "Failed to create car"));
     }
-
     return res.json();
 };
 
@@ -66,7 +71,9 @@ export const updateCar = async (id: string, formData: FormData) => {
         body: formData,
         credentials: 'include'
     });
-    if (!res.ok) throw new Error("Failed to update car");
+    if (!res.ok) {
+        throw new Error(await readError(res, "Failed to update car"));
+    }
     return res.json();
 };
 

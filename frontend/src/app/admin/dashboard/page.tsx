@@ -181,9 +181,7 @@ export default function AdminDashboard() {
             fetchCars();
         } catch (error: any) {
             console.error("Save error:", error);
-            const detail = error.response?.data?.error || "";
-            const msg = error.response?.data?.message || error.message || "Failed to save car data.";
-            showNotif(`Save failed: ${msg}${detail ? `\n\nDetail: ${detail}` : ''}`, 'error');
+            showNotif(`Save failed: ${error.message || "Unknown error"}`, 'error');
         } finally {
             setFormLoading(false);
         }
