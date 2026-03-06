@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 // Generate JWT Token
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '30d',
+        expiresIn: '30m', // 30 minutes expiration
     });
 };
 
@@ -33,6 +33,7 @@ const loginUser = async (req, res) => {
                 httpOnly: true,
                 secure: true,
                 sameSite: 'none',
+                path: '/', // Explicit path ensures it's fully matched when clearing
                 // No maxAge = session cookie; cleared when browser is closed
             });
 
@@ -57,6 +58,7 @@ const logoutUser = (req, res) => {
         httpOnly: true,
         secure: true,
         sameSite: 'none',
+        path: '/', // Path must match exactly to overwrite and clear the cookie
         expires: new Date(0),
     });
 

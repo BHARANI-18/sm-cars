@@ -8,6 +8,7 @@ import { compressImages } from "@/lib/imageUtils";
 import Image from "next/image";
 
 const FUEL_OPTIONS = ['Petrol', 'Diesel', 'LPG', 'CNG', 'Electric'];
+const MAX_IMAGES = 10;
 
 export default function AdminDashboard() {
     const { user, loading } = useAuth();
@@ -22,7 +23,7 @@ export default function AdminDashboard() {
     const [formLoading, setFormLoading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState("");
 
-    // Custom dialog modals (no browser alert/confirm)
+    // Custom dialog modals
     const [confirmModal, setConfirmModal] = useState<{ open: boolean; message: string; onConfirm: () => void }>(
         { open: false, message: "", onConfirm: () => { } }
     );
@@ -38,8 +39,14 @@ export default function AdminDashboard() {
         owner: "", fcUntil: "", insurance: "", kilometer: ""
     });
     const [selectedFuelTypes, setSelectedFuelTypes] = useState<string[]>([]);
+
+    // Images: existing URLs (from Cloudinary) + new File objects
+    const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
     const [imageFiles, setImageFiles] = useState<File[]>([]);
+    // primaryImageIndex spans the combined list: 0..(existingImageUrls.length-1) = existing, then new files
     const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
+
+    const totalImages = existingImageUrls.length + imageFiles.length;
 
     useEffect(() => {
         if (!loading && !user) router.push("/admin/login");
@@ -77,6 +84,7 @@ export default function AdminDashboard() {
     const resetForm = () => {
         setFormData({ brand: "", model: "", year: "", price: "", transmission: "", mileage: "", description: "", owner: "", fcUntil: "", insurance: "", kilometer: "" });
         setSelectedFuelTypes([]);
+        setExistingImageUrls([]);
         setImageFiles([]);
         setPrimaryImageIndex(0);
     };
@@ -97,17 +105,19 @@ export default function AdminDashboard() {
             fcUntil: car.fcUntil ? car.fcUntil.toString() : "",
             insurance: car.insurance || "", kilometer: car.kilometer ? car.kilometer.toString() : ""
         });
+        // Fuel type
         const ft = car.fuelType;
         if (Array.isArray(ft)) {
             setSelectedFuelTypes(ft);
         } else if (ft) {
-            // Handle comma-separated string e.g. "Petrol, Diesel"
             setSelectedFuelTypes(ft.split(',').map((s: string) => s.trim()).filter(Boolean));
         } else {
             setSelectedFuelTypes([]);
         }
+        // Existing images — show the current cloud URLs
+        setExistingImageUrls(car.imageUrls || []);
         setImageFiles([]);
-        setPrimaryImageIndex(0);
+        setPrimaryImageIndex(0); // first existing image is cover by default
         setIsModalOpen(true);
     };
 
@@ -121,37 +131,48 @@ export default function AdminDashboard() {
         );
     };
 
-    // Appends new files to existing selection (does NOT replace)
+    // Remove an EXISTING (already-uploaded) image
+    const removeExistingImage = (idx: number) => {
+        const updated = existingImageUrls.filter((_, i) => i !== idx);
+        setExistingImageUrls(updated);
+        // Adjust primaryImageIndex if needed
+        const newTotal = updated.length + imageFiles.length;
+        if (primaryImageIndex >= newTotal) setPrimaryImageIndex(Math.max(0, newTotal - 1));
+        else if (primaryImageIndex === idx) setPrimaryImageIndex(0);
+    };
+
+    // Remove a NEW (not-yet-uploaded) image
+    const removeNewImage = (idx: number) => {
+        const updated = imageFiles.filter((_, i) => i !== idx);
+        setImageFiles(updated);
+        const newTotal = existingImageUrls.length + updated.length;
+        const newFileOffset = existingImageUrls.length;
+        const combinedIdx = newFileOffset + idx;
+        if (primaryImageIndex >= newTotal) setPrimaryImageIndex(Math.max(0, newTotal - 1));
+        else if (primaryImageIndex === combinedIdx) setPrimaryImageIndex(0);
+    };
+
+    // Add new files — respects the 10-image total limit
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
         const newFiles = Array.from(e.target.files);
-        const currentCount = imageFiles.length;
+        const currentTotal = totalImages;
 
-        if (currentCount >= 10) {
-            showNotif('You have already added 10 images. Remove one first before adding more.', 'warning');
+        if (currentTotal >= MAX_IMAGES) {
+            showNotif(`You already have ${MAX_IMAGES} images. Remove one first.`, 'warning');
             e.target.value = '';
             return;
         }
 
-        const remaining = 10 - currentCount;
+        const remaining = MAX_IMAGES - currentTotal;
         const toAdd = newFiles.slice(0, remaining);
 
         if (newFiles.length > remaining) {
-            showNotif(`Only ${remaining} more image(s) can be added (10 max). ${newFiles.length - remaining} file(s) were skipped.`, 'warning');
+            showNotif(`Only ${remaining} more image(s) can be added (${MAX_IMAGES} max). ${newFiles.length - remaining} skipped.`, 'warning');
         }
 
         setImageFiles(prev => [...prev, ...toAdd]);
-        e.target.value = ''; // reset so user can re-select same files later
-    };
-
-    const removeImage = (idx: number) => {
-        const updated = imageFiles.filter((_, i) => i !== idx);
-        setImageFiles(updated);
-        if (primaryImageIndex >= updated.length) {
-            setPrimaryImageIndex(Math.max(0, updated.length - 1));
-        } else if (primaryImageIndex === idx) {
-            setPrimaryImageIndex(0);
-        }
+        e.target.value = '';
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -162,18 +183,33 @@ export default function AdminDashboard() {
         try {
             const sendData = new FormData();
             Object.entries(formData).forEach(([key, value]) => sendData.append(key, value));
-            // Send as ONE comma-separated string — avoids multer parsing as array
-            // which causes Mongoose "Cast to string failed" error on the backend
             sendData.append('fuelType', selectedFuelTypes.join(', '));
 
-            if (imageFiles && imageFiles.length > 0) {
-                setUploadStatus(`Compressing ${imageFiles.length} image(s)...`);
-                const orderedFiles = [...imageFiles];
-                if (primaryImageIndex > 0 && primaryImageIndex < orderedFiles.length) {
-                    const primary = orderedFiles.splice(primaryImageIndex, 1)[0];
-                    orderedFiles.unshift(primary);
+            // Determine cover image and reorder
+            const existCount = existingImageUrls.length;
+            let orderedExisting = [...existingImageUrls];
+            let orderedNew = [...imageFiles];
+
+            if (primaryImageIndex < existCount) {
+                // Cover is an existing image — move it to front
+                const cover = orderedExisting.splice(primaryImageIndex, 1)[0];
+                orderedExisting = [cover, ...orderedExisting];
+            } else {
+                // Cover is a new image — move it to front of new files
+                const newCoverIdx = primaryImageIndex - existCount;
+                if (newCoverIdx >= 0 && newCoverIdx < orderedNew.length) {
+                    const cover = orderedNew.splice(newCoverIdx, 1)[0];
+                    orderedNew = [cover, ...orderedNew];
                 }
-                const compressed = await compressImages(orderedFiles);
+            }
+
+            // Send existing image URLs to keep
+            orderedExisting.forEach(url => sendData.append('keepImages', url));
+
+            // Compress + upload new images
+            if (orderedNew.length > 0) {
+                setUploadStatus(`Compressing ${orderedNew.length} image(s)...`);
+                const compressed = await compressImages(orderedNew);
                 setUploadStatus(`Uploading ${compressed.length} image(s) to cloud...`);
                 compressed.forEach(file => sendData.append('images', file));
             }
@@ -312,7 +348,7 @@ export default function AdminDashboard() {
                                         <option value="Manual">Manual</option>
                                     </select>
                                 </div>
-                                {/* Fuel Type — multi-select checkboxes */}
+                                {/* Fuel Type */}
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Fuel Type <span className="text-xs font-normal text-gray-400">(select all that apply)</span>
@@ -321,8 +357,7 @@ export default function AdminDashboard() {
                                         {FUEL_OPTIONS.map(ft => (
                                             <label key={ft} className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all select-none ${selectedFuelTypes.includes(ft)
                                                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold'
-                                                : 'border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-gray-300 hover:border-blue-300'
-                                                }`}>
+                                                : 'border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-gray-300 hover:border-blue-300'}`}>
                                                 <input type="checkbox" checked={selectedFuelTypes.includes(ft)} onChange={() => handleFuelTypeToggle(ft)} className="sr-only" />
                                                 {ft}
                                             </label>
@@ -355,21 +390,23 @@ export default function AdminDashboard() {
                                     <input type="number" name="kilometer" value={formData.kilometer} onChange={handleInputChange} placeholder="e.g. 45000" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white" />
                                 </div>
 
-                                {/* Image Upload */}
+                                {/* ── Image Section ── */}
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                        Images <span className="text-xs font-normal text-gray-400">(Max 10 · tap to set cover · × to remove)</span>
+                                        Images
+                                        <span className="ml-2 text-xs font-normal text-gray-400">
+                                            (Max {MAX_IMAGES} · tap to set cover · × to remove)
+                                        </span>
                                     </label>
 
-                                    {/* Counter + Add button row */}
+                                    {/* Counter + Add button */}
                                     <div className="flex items-center gap-3 flex-wrap mb-3">
-                                        <span className={`text-sm font-semibold px-3 py-1 rounded-full ${imageFiles.length >= 10
+                                        <span className={`text-sm font-semibold px-3 py-1 rounded-full ${totalImages >= MAX_IMAGES
                                             ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                                            : 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-gray-300'
-                                            }`}>
-                                            {imageFiles.length}/10
+                                            : 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-gray-300'}`}>
+                                            {totalImages}/{MAX_IMAGES}
                                         </span>
-                                        {imageFiles.length < 10 ? (
+                                        {totalImages < MAX_IMAGES ? (
                                             <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition">
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                                                 Add Images
@@ -378,40 +415,63 @@ export default function AdminDashboard() {
                                         ) : (
                                             <span className="text-xs text-red-500 font-medium">Limit reached. Remove an image to add more.</span>
                                         )}
-                                        {editingCar && imageFiles.length === 0 && (
-                                            <span className="text-xs text-gray-400 italic">No new images — existing images will be kept.</span>
-                                        )}
                                     </div>
 
-                                    {/* Thumbnail grid */}
-                                    {imageFiles.length > 0 && (
+                                    {/* Unified thumbnail grid — existing first, then new */}
+                                    {totalImages > 0 && (
                                         <div className="flex gap-3 flex-wrap">
-                                            {imageFiles.map((file, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className={`relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden border-4 transition-all group ${primaryImageIndex === idx
-                                                        ? 'border-blue-500 shadow-md scale-105'
-                                                        : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
-                                                        }`}
-                                                >
-                                                    <img
-                                                        src={URL.createObjectURL(file)}
-                                                        alt={`preview-${idx}`}
-                                                        onClick={() => setPrimaryImageIndex(idx)}
-                                                        className="object-cover w-full h-full cursor-pointer"
-                                                    />
-                                                    {primaryImageIndex === idx && (
-                                                        <div className="absolute top-0 right-0 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-bl-lg">COVER</div>
-                                                    )}
-                                                    {/* Always-visible remove button — critical for mobile touch */}
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
-                                                        className="absolute top-0.5 left-0.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-md"
-                                                        title="Remove image"
-                                                    >×</button>
-                                                </div>
-                                            ))}
+                                            {/* Existing images (Cloudinary URLs) */}
+                                            {existingImageUrls.map((url, idx) => {
+                                                const combinedIdx = idx;
+                                                const isCover = primaryImageIndex === combinedIdx;
+                                                return (
+                                                    <div
+                                                        key={`existing-${idx}`}
+                                                        className={`relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden border-4 transition-all ${isCover ? 'border-blue-500 shadow-md scale-105' : 'border-gray-300 dark:border-zinc-600'}`}
+                                                    >
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img src={url} alt={`existing-${idx}`} onClick={() => setPrimaryImageIndex(combinedIdx)} className="object-cover w-full h-full cursor-pointer" />
+                                                        {isCover && (
+                                                            <div className="absolute top-0 right-0 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-bl-lg">COVER</div>
+                                                        )}
+                                                        {/* Always-visible remove button */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); removeExistingImage(idx); }}
+                                                            className="absolute top-0.5 left-0.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-md"
+                                                            title="Remove image"
+                                                        >×</button>
+                                                        {/* Existing badge */}
+                                                        <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[8px] text-center py-0.5">Saved</div>
+                                                    </div>
+                                                );
+                                            })}
+
+                                            {/* New images (File objects) */}
+                                            {imageFiles.map((file, idx) => {
+                                                const combinedIdx = existingImageUrls.length + idx;
+                                                const isCover = primaryImageIndex === combinedIdx;
+                                                return (
+                                                    <div
+                                                        key={`new-${idx}`}
+                                                        className={`relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden border-4 transition-all ${isCover ? 'border-blue-500 shadow-md scale-105' : 'border-dashed border-gray-400 dark:border-zinc-500'}`}
+                                                    >
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img src={URL.createObjectURL(file)} alt={`new-${idx}`} onClick={() => setPrimaryImageIndex(combinedIdx)} className="object-cover w-full h-full cursor-pointer" />
+                                                        {isCover && (
+                                                            <div className="absolute top-0 right-0 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-bl-lg">COVER</div>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); removeNewImage(idx); }}
+                                                            className="absolute top-0.5 left-0.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-md"
+                                                            title="Remove image"
+                                                        >×</button>
+                                                        {/* New badge */}
+                                                        <div className="absolute bottom-0 left-0 right-0 bg-green-600/70 text-white text-[8px] text-center py-0.5">New</div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
@@ -456,56 +516,32 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                         <div className="flex justify-end gap-3">
-                            <button onClick={() => setConfirmModal(c => ({ ...c, open: false }))} className="px-5 py-2 rounded-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">
-                                Cancel
-                            </button>
-                            <button onClick={confirmModal.onConfirm} className="px-5 py-2 rounded-lg font-bold text-white bg-red-600 hover:bg-red-700 transition">
-                                Yes, Delete
-                            </button>
+                            <button onClick={() => setConfirmModal(c => ({ ...c, open: false }))} className="px-5 py-2 rounded-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">Cancel</button>
+                            <button onClick={confirmModal.onConfirm} className="px-5 py-2 rounded-lg font-bold text-white bg-red-600 hover:bg-red-700 transition">Yes, Delete</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* ── Notification Modal (error / warning / info) ── */}
+            {/* ── Notification Modal ── */}
             {notifModal.open && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md p-6">
                         <div className="flex items-start gap-4 mb-6">
-                            <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${notifModal.type === 'error' ? 'bg-red-100 dark:bg-red-900/30'
-                                : notifModal.type === 'warning' ? 'bg-amber-100 dark:bg-amber-900/30'
-                                    : 'bg-blue-100 dark:bg-blue-900/30'
-                                }`}>
-                                {notifModal.type === 'error' && (
-                                    <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                )}
-                                {notifModal.type === 'warning' && (
-                                    <svg className="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c.866 1.5-.217 3.374-1.948 3.374H4.645c-1.73 0-2.813-1.874-1.948-3.374L10.051 3.378c.866-1.5 3.032-1.5 3.898 0l7.354 12.748zM12 15.75h.007v.008H12v-.008z" />
-                                    </svg>
-                                )}
-                                {notifModal.type === 'info' && (
-                                    <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                                    </svg>
-                                )}
+                            <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${notifModal.type === 'error' ? 'bg-red-100 dark:bg-red-900/30' : notifModal.type === 'warning' ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
+                                {notifModal.type === 'error' && <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>}
+                                {notifModal.type === 'warning' && <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c.866 1.5-.217 3.374-1.948 3.374H4.645c-1.73 0-2.813-1.874-1.948-3.374L10.051 3.378c.866-1.5 3.032-1.5 3.898 0l7.354 12.748zM12 15.75h.007v.008H12v-.008z" /></svg>}
+                                {notifModal.type === 'info' && <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>}
                             </div>
                             <div>
-                                <h3 className={`text-lg font-bold mb-1 ${notifModal.type === 'error' ? 'text-red-700 dark:text-red-400'
-                                    : notifModal.type === 'warning' ? 'text-amber-700 dark:text-amber-400'
-                                        : 'text-blue-700 dark:text-blue-400'
-                                    }`}>
+                                <h3 className={`text-lg font-bold mb-1 ${notifModal.type === 'error' ? 'text-red-700 dark:text-red-400' : notifModal.type === 'warning' ? 'text-amber-700 dark:text-amber-400' : 'text-blue-700 dark:text-blue-400'}`}>
                                     {notifModal.type === 'error' ? 'Error' : notifModal.type === 'warning' ? 'Warning' : 'Notice'}
                                 </h3>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">{notifModal.message}</p>
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <button onClick={() => setNotifModal(n => ({ ...n, open: false }))} className="px-5 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition">
-                                OK
-                            </button>
+                            <button onClick={() => setNotifModal(n => ({ ...n, open: false }))} className="px-5 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition">OK</button>
                         </div>
                     </div>
                 </div>

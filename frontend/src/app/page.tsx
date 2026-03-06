@@ -61,7 +61,7 @@ export default async function Home() {
                   alt="Premium Car"
                   width={600}
                   height={340}
-                  className="relative z-10 w-full h-auto object-contain drop-shadow-2xl"
+                  className="relative z-10 w-full h-auto object-contain drop-shadow-2xl mix-blend-screen"
                   priority
                 />
               </div>
