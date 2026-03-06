@@ -100,16 +100,7 @@ export default async function Home() {
           </span>
         </div>
 
-        {/* Silhouette banner — decorative */}
-        <div className="relative mb-8 hidden md:block">
-          <Image
-            src="/car_silhouette_banner.png"
-            alt="Car types"
-            width={1200}
-            height={120}
-            className="w-full h-20 object-contain opacity-10 dark:opacity-20"
-          />
-        </div>
+
 
         {cars.length === 0 ? (
           <div className="text-center text-gray-500 mt-16 py-12">
