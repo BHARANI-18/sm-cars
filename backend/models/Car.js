@@ -14,7 +14,7 @@ const carSchema = new mongoose.Schema({
         type: Number
     },
     price: {
-        type: Number
+        type: String
     },
     fuelType: {
         type: String       // stored as comma-separated e.g. 'Petrol, Diesel'
@@ -32,7 +32,7 @@ const carSchema = new mongoose.Schema({
         type: String       // e.g. '1st', '2nd', 'Company'
     },
     fcUntil: {
-        type: Number       // Fitness Certificate valid until year
+        type: String       // Fitness Certificate valid until year/date
     },
     insurance: {
         type: String       // e.g. 'Comprehensive', 'Third Party'

@@ -48,8 +48,8 @@ export default async function CarDetailsPage({ params }: { params: Promise<{ id:
                     </h1>
 
                     {/* Price */}
-                    <p className="text-xl md:text-2xl font-semibold text-blue-600 dark:text-blue-400 mb-6">
-                        {car.price ? `$${car.price.toLocaleString()}` : 'Price on request'}
+                    <p className="text-xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 mb-6 drop-shadow-sm">
+                        {car.price ? `₹${car.price}` : 'Price on request'}
                     </p>
 
                     {/* CTA - Call button (mobile prominent) */}

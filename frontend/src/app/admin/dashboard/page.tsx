@@ -280,7 +280,7 @@ export default function AdminDashboard() {
                                             </td>
                                             <td className="p-4 font-medium text-gray-900 dark:text-white">{car.brand} {car.model}</td>
                                             <td className="p-4 text-blue-600 dark:text-blue-400 font-semibold">
-                                                {car.price ? `$${car.price.toLocaleString()}` : 'N/A'}
+                                                {car.price ? `₹${car.price}` : 'N/A'}
                                             </td>
                                             <td className="p-4 text-gray-500 dark:text-gray-400">{car.year || 'N/A'}</td>
                                             <td className="p-4 text-right space-x-3">
@@ -331,8 +331,8 @@ export default function AdminDashboard() {
                                 </div>
                                 {/* Price */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price ($)</label>
-                                    <input type="number" name="price" value={formData.price} onChange={handleInputChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white" />
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price (₹)</label>
+                                    <input type="text" name="price" value={formData.price} onChange={handleInputChange} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white" />
                                 </div>
                                 {/* Mileage */}
                                 <div>
@@ -376,8 +376,8 @@ export default function AdminDashboard() {
                                 </div>
                                 {/* FC Until */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">FC Until <span className="text-xs font-normal text-gray-400">(year)</span></label>
-                                    <input type="number" name="fcUntil" value={formData.fcUntil} onChange={handleInputChange} placeholder="e.g. 2027" min="2000" max="2099" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white" />
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">FC Until <span className="text-xs font-normal text-gray-400">(year/date)</span></label>
+                                    <input type="text" name="fcUntil" value={formData.fcUntil} onChange={handleInputChange} placeholder="e.g. 2027 or Life Time" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white" />
                                 </div>
                                 {/* Insurance */}
                                 <div>

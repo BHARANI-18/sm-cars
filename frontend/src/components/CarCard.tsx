@@ -7,7 +7,7 @@ interface Car {
     brand: string;
     model: string;
     year: number;
-    price: number;
+    price: string;
     fuelType: string | string[];
     transmission: string;
     mileage: number;
@@ -39,8 +39,8 @@ export default function CarCard({ car }: { car: Car }) {
                 ) : (
                     <span className="text-gray-400 text-sm">No image</span>
                 )}
-                <div className="absolute top-3 right-3 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-md">
-                    {car.price ? `$${car.price.toLocaleString()}` : 'POA'}
+                <div className="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-full text-sm font-extrabold shadow-lg z-10">
+                    {car.price ? `₹${car.price}` : 'POA'}
                 </div>
             </div>
 
@@ -77,7 +77,7 @@ export default function CarCard({ car }: { car: Car }) {
 
                 <Link
                     href={`/cars/${car._id}`}
-                    className="block w-full text-center bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-900 dark:text-white font-medium py-2.5 rounded-lg transition-colors text-sm"
+                    className="block w-full text-center bg-gradient-to-r from-gray-100 to-gray-200 hover:from-blue-600 hover:to-indigo-600 dark:from-zinc-800 dark:to-zinc-800 dark:hover:from-blue-600 dark:hover:to-indigo-600 text-gray-900 hover:text-white dark:text-gray-100 font-bold py-2.5 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md text-sm"
                 >
                     View Details
                 </Link>

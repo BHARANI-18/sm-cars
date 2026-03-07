@@ -19,11 +19,11 @@ export default function Navbar() {
                         {t("nav.brand")}
                     </Link>
 
-                    <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-end">
                         {/* Translator Toggle */}
                         <button
                             onClick={toggleLanguage}
-                            className="text-xs font-semibold px-3 py-1.5 rounded-md bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-700 transition"
+                            className="text-xs font-bold px-3 py-1.5 rounded-md bg-gray-100 dark:bg-zinc-800 hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white dark:hover:from-blue-600 dark:hover:to-indigo-600 border border-gray-300 dark:border-zinc-700 transition-all duration-300 shadow-sm"
                             aria-label="Toggle language"
                         >
                             {language === "en" ? "தமிழ்" : "EN"}
@@ -32,7 +32,7 @@ export default function Navbar() {
                         {/* Theme Toggle */}
                         <button
                             onClick={toggleTheme}
-                            className="text-xs font-semibold px-3 py-1.5 rounded-md bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-700 transition"
+                            className="text-xs font-bold px-3 py-1.5 rounded-md bg-gray-100 dark:bg-zinc-800 hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white dark:hover:from-blue-600 dark:hover:to-indigo-600 border border-gray-300 dark:border-zinc-700 transition-all duration-300 shadow-sm"
                             aria-label="Toggle theme"
                         >
                             {theme === "light" ? t("theme.dark") : t("theme.light")}
@@ -41,7 +41,7 @@ export default function Navbar() {
                         {/* Phone number — tap to call on mobile */}
                         <a
                             href="tel:9543182448"
-                            className="flex items-center gap-1.5 text-sm font-semibold text-green-600 dark:text-green-400 hover:text-green-500 transition"
+                            className="flex items-center gap-1.5 text-sm font-bold text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors"
                             aria-label="Call us at 9543182448"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
@@ -54,20 +54,20 @@ export default function Navbar() {
                 </div>
 
                 {/* Bottom row — nav links */}
-                <div className="flex items-center gap-4 mt-2 text-sm">
-                    <Link href="/" className="hover:text-blue-500 font-medium transition">
+                <div className="flex items-center gap-4 mt-3 text-sm flex-wrap">
+                    <Link href="/" className="font-semibold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                         {t("nav.inventory")}
                     </Link>
                     <Link
                         href={user ? "/admin/dashboard" : "/admin/login"}
-                        className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition"
+                        className="font-semibold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                     >
                         {t("nav.dashboard")}
                     </Link>
                     {user && (
                         <button
                             onClick={logout}
-                            className="ml-auto bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-xs font-semibold transition"
+                            className="ml-auto bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-md"
                         >
                             {t("nav.logout")}
                         </button>

@@ -69,7 +69,7 @@ const createCar = async (req, res) => {
             brand,
             model,
             year: year ? Number(year) : undefined,
-            price: price ? Number(price) : undefined,
+            price: price,
             fuelType: (() => {
                 if (Array.isArray(fuelType)) return fuelType.join(', ');
                 return fuelType || '';
@@ -78,7 +78,7 @@ const createCar = async (req, res) => {
             mileage: mileage ? Number(mileage) : undefined,
             description,
             owner,
-            fcUntil: fcUntil ? Number(fcUntil) : undefined,
+            fcUntil: fcUntil,
             insurance,
             kilometer: kilometer ? Number(kilometer) : undefined,
             imageUrls
@@ -130,7 +130,7 @@ const updateCar = async (req, res) => {
             brand: req.body.brand !== undefined ? req.body.brand : car.brand,
             model: req.body.model !== undefined ? req.body.model : car.model,
             year: req.body.year ? Number(req.body.year) : car.year,
-            price: req.body.price ? Number(req.body.price) : car.price,
+            price: req.body.price !== undefined ? req.body.price : car.price,
             fuelType: (() => {
                 const ft = req.body.fuelType;
                 if (Array.isArray(ft)) return ft.join(', ');
@@ -142,7 +142,7 @@ const updateCar = async (req, res) => {
             mileage: req.body.mileage ? Number(req.body.mileage) : car.mileage,
             description: req.body.description !== undefined ? req.body.description : car.description,
             owner: req.body.owner !== undefined ? req.body.owner : car.owner,
-            fcUntil: req.body.fcUntil ? Number(req.body.fcUntil) : car.fcUntil,
+            fcUntil: req.body.fcUntil !== undefined ? req.body.fcUntil : car.fcUntil,
             insurance: req.body.insurance !== undefined ? req.body.insurance : car.insurance,
             kilometer: req.body.kilometer ? Number(req.body.kilometer) : car.kilometer,
             imageUrls: imageUrls
